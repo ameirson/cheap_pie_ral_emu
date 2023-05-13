@@ -156,7 +156,8 @@ class cp_register:
     def __repr__(self,regval = None ):
         if regval is None:
             # read register value
-            regval = self.getreg()
+            outstr = self.regname + ' = ' + 'None (No Shadow Yet)'
+            return outstr
 
         if len(self.bitfields) > 0:
             reg = []
@@ -165,7 +166,7 @@ class cp_register:
                 reg.append(field.__repr__(regval))
             outstr = "\n".join(reg)
         else:
-            outstr = self.regname + ' = ' + hex(regval)
+            outstr = self.regname + ' = ' + hex(regval) + ' (* shadow *)'
         return outstr
 
     def display(self, regval = None ):

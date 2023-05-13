@@ -76,6 +76,10 @@ class cp_bitfield():
 
     def _strval(self,fieldval,width=25):
         #
+        if not fieldval:
+            outstr = self.fieldname + ' [' + str(self.width) + '] = ' + 'None (No Shadow Yet)'
+            return outstr
+
         bitstr = self.fieldname  + ' [' + str(self.width) + '] = ' + hex(fieldval)
 
         if self.width > 1:
@@ -96,7 +100,8 @@ class cp_bitfield():
             if self.hif is None:
                 regval=0
             else:
-                regval=self.hif.hifread(self.addr)
+                outstr = self._strval(None)
+                return outstr
         #
         # compute field value from register value
         if isinstance(regval, str):
