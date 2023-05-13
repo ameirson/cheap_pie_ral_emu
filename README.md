@@ -1,208 +1,104 @@
-# cheap_pie
-A python tool for register-based chip verification and validation
+# cheap_pie_ral_emu - for from cheap_pie
 
-"Cheap Pie" is a python tool for register-based chip verification and validation.
-The name is a translitteration of "chip py" for obvious reasons.
+A fork from original cheap_pie: https://github.com/bat52/cheap_pie
+Many thanks for Marco Merlin for this awesome package !
+See original README.md for operation of the original package (https://github.com/bat52/cheap_pie/blob/master/README.md)
 
-Given an input description file for the chip, it provides a register-level and 
-bitfield-level read/write access, through a generic transport layer.
 
-Currently the implemented description input modes are:
-- CMSIS-SVD (https://www.keil.com/pack/doc/CMSIS/SVD/html/svd_Format_pg.html)
-- IP-XACT ( https://www.accellera.org/downloads/standards/ip-xact )
-- SystemRDL (https://www.accellera.org/activities/working-groups/systemrdl)
+This fork provides an addition hif transport layer for register access emulation & logging. 
+The emulation is very basic, but useful for implementing pre-silicon flows without a real hardware emulation.
+The emulation is based on providing a list of values for each register, these values will be used one after the other 
+when a register read (hifread) is done. When the list is exhausted, the next read wil start over from the first value. 
 
-but it should be relatively easy to add different chip description formats.
+# ral_emu
+Implements register emulation which is then used in the new hif transport called cp_reg_emu.py
 
-Although tested on few real chips (NXP QN9080, I.MX RT1010, K64F),
-cheap_pie parser already supports dozen of devices, listed in the CMSIS-SVD 
-repository https://github.com/posborne/cmsis-svd .
+# Example using IP-Xact xml:
+Full example can be found inside cp_ral_emu_test()
 
-Currently the supported transport layers are jlink and pyocd, but it should be really easy
-to add support for different transport layers, like for instance openSDA, 
-CMSIS-DAP, Total Phase Cheetah, GDB or any other.
+        reg_emu_file = r'emu_example.txt'
+        ral_log_file = f'log_exmaple.txt'
+        ipxact_xml = r'ipxact_example.xml'
+    
+        # Temporary hal without hif is used for:
+        # 1. Building an initial emulation file automatically
+        # 2. Creating the cp_reg_emu - with actual addresses and validating the provided emulation
+        # (useful since it is normally manually edited)
+        hal = ipxact_parse(ipxact_xml)
+         
+        # Generate Emulation File with Multiple, Random Values
+        emu_values_per_reg = 3
+        gen_reg_emu_file(reg_emu_file, hal, rand_vals_count=emu_values_per_reg)
+    
+        # Generate the register emulation hif 
+        hif = cp_reg_emu(reg_emu_file, ral_log_file, hal=hal)
+        hal = ipxact_parse(ipxact_xml, hif=hif)
 
-Experimental support for pyverilator transport allows to run interactive simulation
-of register blocks generated from SystemRDL source.
 
-Author: Marco Merlin
-Tested on ipython3 (python 3.8.5) on ubuntu 20.04
+# Generate of reg_emu_file:
+Full example can also be found inside ral_emu.example.py
 
-# IPython Example:
-        %run cheap_pie
-        inval = "0xFFFFFFFF"
-        hal.regs.ADC_ANA_CTRL.setreg(inval)
-        retval = hex(hal.regs.ADC_ANA_CTRL.getreg())
-        assert(literal_eval(inval) == literal_eval(retval))
-
-        # decimal assignement        
-        inval = 2
-        hal.regs.ADC_ANA_CTRL.setreg(inval)
-        retval = hal.regs.ADC_ANA_CTRL.getreg()        
-        assert(inval == retval)
+        import os
+        from ral_emu import gen_reg_emu_file
+        from cheap_pie.parsers.ipyxact_parse import ipxact_parse
         
-        hal.regs.ADC_ANA_CTRL
-        hal.regs.ADC_ANA_CTRL.display()
-                
-        print('Test bitfield methods...')
+        ipxact_xml = os.path.join(os.path.dirname(__file__), "ipxact_dim_example.xml")
+        reg_emu_file_base = r'reg_emu.txt'
         
-        hal.regs.ADC_ANA_CTRL.bitfields.ADC_BM
-        hal.regs.ADC_ANA_CTRL.bitfields.ADC_BM.display()
-        hal.regs.ADC_ANA_CTRL.bitfields.ADC_BM.display(2)
-        hal.regs.ADC_ANA_CTRL.bitfields.ADC_BM.setbit(inval)
-        retval = hal.regs.ADC_ANA_CTRL.bitfields.ADC_BM.getbit()
-        assert(inval == retval)
-
-        # subscriptable register access
-        hal[0]
-        # subscriptable bitfield access
-        hal[0][0]
-        # subscriptable as a dictionary
-        hal['SYSCON_RST_SW_SET']
-        hal['ADC_ANA_CTRL']['ADC_BM']
+        # Temporary hal without hif is used for:
+        # 1. Building an initial emulation file automatically
+        # 2. Creating the cp_reg_emu - with actual addresses and validating the provided emulation
+        # (useful since it is normally manually edited)
+        hal = ipxact_parse(ipxact_xml)
         
-        # assignement
-        hal['ADC_ANA_CTRL'] = 1
-        hal['ADC_ANA_CTRL']['ADC_BM'] = 2
-        # dict-based assignement in single register write
-        hal['ADC_ANA_CTRL'] = {'DITHER_EN': 1, 'CHOP_EN': 1, 'INV_CLK': 1}
+        # Emulation with Single Value = 0
+        reg_emu_file = reg_emu_file_base.replace('.txt', '_zero_val.txt')
+        gen_reg_emu_file(reg_emu_file, hal, val=0)
+        
+        # Emulation with Single Value - from ipxact reset value, if exists, 0xBAD0C0DE if missing
+        # NOT YET SUPPORTED
+        # reg_emu_file = reg_emu_file_base.replace('.txt', '_reset_val.txt')
+        # gen_reg_emu_file(reg_emu_file, hal, val_reset=True, val_reset_missing=0xBAD0C0DE)
+        
+        # Emulation with Multiple Random Values, using default range
+        reg_emu_file = reg_emu_file_base.replace('.txt', '_3_random_vals_default_range.txt')
+        emu_values_per_reg = 3
+        gen_reg_emu_file(reg_emu_file, hal, rand_vals_count=emu_values_per_reg)
+        
+        # Emulation with Multiple Random Values, using provided range
+        reg_emu_file = reg_emu_file_base.replace('.txt', '_4_random_vals_specific_range.txt')
+        emu_values_per_reg = 4
+        gen_reg_emu_file(reg_emu_file, hal, rand_vals_count=emu_values_per_reg, rand_vals_min=0xF, rand_vals_max=0xFFFF)
 
-        # help
-        hal.regs.ADC_ANA_CTRL.help()
-        ADC core and reference setting regsiter
-                   ADC_BM: 
-                         : ADC bias current selection.
-                ADC_ORDER: 
-                         : 1 to enable SD ADC 2 order mode selection
-                DITHER_EN: 
-                         : 1 to enable SD ADC PN Sequence in chopper mode
-                  CHOP_EN: 
-                         : 1 to enable SD ADC chopper
-                  INV_CLK: 
-                         : 1 to invert SD ADC Output Clock
-                  VREF_BM: 
-                         : SD ADC Reference Driver bias current selection.
-               VREF_BM_X3: 
-                         : SD ADC Reference Driver bias current triple.
-               VINN_IN_BM: 
-                         : PGA VlNN Input Driver bias current selection.
-              VINN_OUT_BM: 
-                         : PGA VlNN Output Driver bias current selection.
-           VINN_OUT_BM_X3: 
-                         : PGA VlNN Output Driver bias current triple.
-              ADC_BM_DIV2: 
-                         : SD ADC bias current half.
-
-# CLI Example:
-        # load RT1010 from local svd file under ./devices/
-        # automatically calls ipython and cheap_pie initialization
-        ./cheap_pie.sh -rf MIMXRT1011.svd -t jlink
-
-        # load K64 from CMSIS-SVD
-        # need to specify vendor for svd not in ./devices/
-        ./cheap_pie.sh -rf MK64F12.svd -ve Freescale -t jlink
-
-        # calls QN9080 with dummy transport layer 
-        # useful to explore device registers
-        ./cheap_pie.sh -t dummy
-
-# Default configurations Examples:
-        # calls QN9080 device with dummy transport layer
-        ./cfgs/cp_qn9080_dummy.sh
-        # calls RT1010 device with jlink transport layer
-        ./cfgs/cp_rt1010_jlink.sh
-        # calls K20 device with dummy transport layer
-        ./cfgs/cp_k20_dummy.sh
-
-# Verilator interactive simulation Examples:
-        ./tools/rdl2verilog.py -f ./devices/rdl/basic.rdl
-        ./cheap_pie.sh -dd  ./devices/rdl -rf basic.rdl -fmt rdl -t verilator -topv ./devices/rdl/basic/basic_rf.sv
-
-# Install
-## From pypi
-        pip3 install cheap_pie
-## From github
-        pip3 install git+https://github.com/bat52/cheap_pie.git@master
-
-# Dependencies for core (required):        
-        # for XML parsing (used by legacy svd parser and IP-XACT parser)
-        pip3 install untangle
-        # for exporting XML info into a human-readable document
-        pip3 install python-docx
-        # for dumping registers
-        pip3 install hickle
-        # CMSIS-SVD python parser including many svd files https://github.com/posborne/cmsis-svd
-        pip3 install cmsis-svd
-        # SPIRIT IP-XACT parser through ipyxact https://github.com/olofk/ipyxact
-        pip3 install ipyxact                
-        # SystemRDL to register-file verilog
-        https://github.com/hughjackson/PeakRDL-verilog
-        # SystemRDL to IP-XACT
-        https://github.com/SystemRDL/PeakRDL-ipxact
-# Dependencies for validation/transport layers (optional):        
-        # for JLINK
-        pip3 install pylink-square
-        # pyOCD for CMSIS-DAP and JLINK support (only tested in python-venv)
-        pip3 install pyocd
-        # esptool for Espressif devices (not yet functional)
-        pip3 install esptool        
-# Dependencies for verification (optional AND experimental):
-        # verilator
-        https://www.veripool.org/verilator/
-        # pyverilator (python verilator wrapper)
-        https://github.com/csail-csg/pyverilator        
-        # gtkwave
-        http://gtkwave.sourceforge.net/
-
-# Releasing
-
-Releases are published automatically when a tag is pushed to GitHub.
-
-.. code-block:: bash
-
-   # Set next version number
-   export RELEASE=x.x.x
-
-   # Create tags
-   git commit --allow-empty -m "Release $RELEASE"
-   git tag -a $RELEASE -m "Version $RELEASE"
-
-   # Push
-   git push upstream --tags
-
-# Register description formats
-regtool from opentitan project seems similar, using JSON to represent chip/IP structure, and I2C transport
-https://docs.opentitan.org/doc/rm/register_tool/
-
-custom input, output: verilog, VHDL, YAML, JSON, TOML, Spreadsheet (XLSX, XLS, OSD, CSV)
-https://github.com/rggen/rggen
-
-convert ipxact register file description into verilog register bank
-https://github.com/oddball/ipxact2systemverilog
-
-# Others	
-In conjunction with pyVISA (https://pyvisa.readthedocs.io/en/master/), used for 
-instument control, it provides a simple and fully python-contained environment
-for silicon validation.
-
-C++ register/bitfields access (including generation from svd)
-https://github.com/thanks4opensource/regbits
-
-STM C++ regbits implementation
-https://github.com/thanks4opensource/regbits_stm
-
-a barebone embedded library generator
-https://modm.io/
-
-hardware descriptions for AVR and STM32 devices
-https://github.com/modm-io/modm-devices
-
-STM32 Peripheral Access Crates (from svd)
-https://github.com/stm32-rs/stm32-rs
-
-Banner created with pyfiglet
-https://www.devdungeon.com/content/create-ascii-art-text-banners-python#install_pyfiglet
-
-Cheap Pie is modeled after an original Octave/Matlab implementation that cannot
-be shared due to licensing reasons. The original code was converted to python
-using SMOP ( https://github.com/ripple-neuro/smop ).
+# Example of ral emulation log file
+        # regname | [ts] | addr | lsb | width | access | value
+        reg_dim_reg_2 [0] [0x00000000] 0 32 HW_READ  0x1
+        reg_dim_reg_2 [0] [0x00000000] 0 32 HW_READ  0x31
+        reg_dim_reg_2 [0] [0x00000000] 0 32 HW_READ  0x61
+        reg_dim_reg_2 [0] [0x00000000] 0 32 HW_READ  0x1
+        reg_dim_reg_2 [0] [0x00000000] 0 32 HW_READ  0x31
+        reg_dim_reg_2 [0] [0x00000000] 0 32 HW_READ  0x61
+        reg_dim_reg_2 [0] [0x00000000] 0 32 HW_READ  0x1
+        reg_dim_reg_2 [0] [0x00000000] 0 32 HW_READ  0x31
+        reg_dim_reg_2 [0] [0x00000000] 0 32 HW_READ  0x61
+        reg_dim_reg_2 [0] [0x00000000] 0 32 HW_READ  0x1
+        reg_dim_reg_with_dim [0] [0x00000004] 0 32 HW_READ  0x11
+        reg_dim_reg_with_dim [0] [0x00000004] 0 32 HW_READ  0x59
+        reg_dim_reg_with_dim [0] [0x00000004] 0 32 HW_READ  0xC
+        reg_dim_reg_with_dim [0] [0x00000004] 0 32 HW_READ  0x11
+        reg_dim_reg_with_dim [0] [0x00000004] 0 32 HW_READ  0x59
+        reg_dim_reg_with_dim [0] [0x00000004] 0 32 HW_READ  0xC
+        reg_dim_reg_with_dim [0] [0x00000004] 0 32 HW_READ  0x11
+        reg_dim_reg_with_dim [0] [0x00000004] 0 32 HW_READ  0x59
+        reg_dim_reg_with_dim [0] [0x00000004] 0 32 HW_READ  0xC
+        reg_dim_reg_with_dim [0] [0x00000004] 0 32 HW_READ  0x11
+        reg_dim_reg_3 [0] [0x00000020] 0 32 HW_READ  0x60
+        reg_dim_reg_3 [0] [0x00000020] 0 32 HW_READ  0x22
+        reg_dim_reg_3 [0] [0x00000020] 0 32 HW_READ  0x55
+        reg_dim_reg_3 [0] [0x00000020] 0 32 HW_READ  0x60
+        reg_dim_reg_3 [0] [0x00000020] 0 32 HW_READ  0x22
+        reg_dim_reg_3 [0] [0x00000020] 0 32 HW_READ  0x55
+        reg_dim_reg_3 [0] [0x00000020] 0 32 HW_READ  0x60
+        reg_dim_reg_3 [0] [0x00000020] 0 32 HW_READ  0x22
+        reg_dim_reg_3 [0] [0x00000020] 0 32 HW_READ  0x55
+        reg_dim_reg_3 [0] [0x00000020] 0 32 HW_READ  0x60

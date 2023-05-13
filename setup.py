@@ -5,15 +5,15 @@ with open("README.md", "r", encoding='utf8') as fh:
     long_description = fh.read()
 
 setup(
-    name='cheap_pie',
-    version='0.9.20',
+    name='cheap_pie_ral_emu',
+    version='0.1.1',
     license='Apache 2.0',
-    author="Marco Merlin",
-    author_email='marcomerli@gmail.com',
+    author="Alon Meirson",
+    author_email='ameirson@gmail.com',
     packages=find_packages('src'),
     package_dir={'': 'src'},
     description="A python tool for silicon validation.",
-    url='https://github.com/bat52/cheap_pie',
+    url='https://github.com/ameirson/cheap_pie_ral_emu/',
     keywords='python silicon validation',
     install_requires=[
           'untangle',
@@ -35,6 +35,6 @@ setup(
 )
 
 project_urls={
-    "Source": "https://github.com/bat52/cheap_pie",
-    "Tracker": "https://github.com/bat52/cheap_pie/issues"
+    "Source": "https://github.com/ameirson/cheap_pie_ral_emu",
+    "Tracker": "https://github.com/ameirson/cheap_pie_ral_emu/issues"
 }

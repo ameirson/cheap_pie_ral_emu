@@ -1,7 +1,2 @@
 TODO
-- implement hal2rdl conversion
-- fix espressif targets support through esptool transport https://github.com/espressif/esptool
-- port to micropython ?
-
-deprecated by SPIRIT and IP-XACT support through dedicated parser:
-    - create IP-XACT to SVD conversion, based on kactus2 converter XSLT rules https://github.com/kactus2/k2xml_converter
+-
