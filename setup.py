@@ -6,7 +6,7 @@ with open("README.md", "r", encoding='utf8') as fh:
 
 setup(
     name='cheap_pie_ral_emu',
-    version='0.1.1',
+    version='0.1.2',
     license='Apache 2.0',
     author="Alon Meirson",
     author_email='ameirson@gmail.com',
